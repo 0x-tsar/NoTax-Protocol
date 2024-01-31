@@ -26,115 +26,116 @@ contract Main is ReentrancyGuard, Test { // remove test for production
         SOCIAL_CAUSE
     }
 
-    enum Countries {
-        Dubai,
-        Switzerland,
-        Singapore,
-        Malta,
-        Estonia,
-        Gibraltar,
-        Lithuania,
-        Unite_States,
-        Japan,
-        South_Korea,
-        El_Salvador,
-        Portugal,
-        Bermuda,
-        Germany,
-        Slovenia,
-        Belarus,
-        Netherlands,
-        Australia,
-        Canada,
-        China,
-        Brazil,
-        India,
-        Mexico,
-        United_Kingdom,
-        France,
-        Italy,
-        Spain,
-        Russia,
-        Turkey,
-        Argentina,
-        Indonesia,
-        Pakistan,
-        Bangladesh,
-        Nigeria,
-        Ethiopia,
-        Philippines,
-        Egypt,
-        Vietnam,
-        DR_Congo,
-        Iran,
-        Thailand,
-        South_Africa,
-        Tanzania,
-        Myanmar,
-        Kenya,
-        Colombia,
-        Uganda,
-        Algeria,
-        Sudan,
-        Ukraine,
-        Iraq,
-        Afghanistan,
-        Poland,
-        Morocco,
-        Saudi_Arabia,
-        Uzbekistan,
-        Peru,
-        Malaysia,
-        Angola,
-        Ghana,
-        Nepal,
-        Yemen,
-        Madagascar,
-        North_Korea,
-        Taiwan,
-        Sri_Lanka,
-        Romania,
-        Kazakhstan,
-        Chile,
-        Belgium,
-        Ecuador,
-        Greece,
-        Sweden,
-        Hungary,
-        Austria,
-        Serbia,
-        Bulgaria,
-        Denmark,
-        Finland,
-        Slovakia,
-        Norway,
-        Ireland,
-        Croatia,
-        Moldova,
-        Bosnia_and_Herzegovina,
-        Albania,
-        North_Macedonia,
-        Bolivia,
-        Guatemala,
-        Honduras,
-        Nicaragua,
-        Costa_Rica,
-        Panama,
-        Belize,
-        Cuba,
-        Dominican_Republic,
-        Haiti,
-        Jamaica,
-        Trinidad_and_Tobago,
-        Barbados,
-        Saint_Lucia,
-        Grenada,
-        Saint_Vincent_and_the_Grenadines,
-        Antigua_and_Barbuda,
-        Dominica,
-        Saint_Kitts_and_Nevis,
-        Bahamas
-    }
+    // still not defined if using countries is the best way around it
+    // enum Countries {
+    //     Dubai,
+    //     Switzerland,
+    //     Singapore,
+    //     Malta,
+    //     Estonia,
+    //     Gibraltar,
+    //     Lithuania,
+    //     Unite_States,
+    //     Japan,
+    //     South_Korea,
+    //     El_Salvador,
+    //     Portugal,
+    //     Bermuda,
+    //     Germany,
+    //     Slovenia,
+    //     Belarus,
+    //     Netherlands,
+    //     Australia,
+    //     Canada,
+    //     China,
+    //     Brazil,
+    //     India,
+    //     Mexico,
+    //     United_Kingdom,
+    //     France,
+    //     Italy,
+    //     Spain,
+    //     Russia,
+    //     Turkey,
+    //     Argentina,
+    //     Indonesia,
+    //     Pakistan,
+    //     Bangladesh,
+    //     Nigeria,
+    //     Ethiopia,
+    //     Philippines,
+    //     Egypt,
+    //     Vietnam,
+    //     DR_Congo,
+    //     Iran,
+    //     Thailand,
+    //     South_Africa,
+    //     Tanzania,
+    //     Myanmar,
+    //     Kenya,
+    //     Colombia,
+    //     Uganda,
+    //     Algeria,
+    //     Sudan,
+    //     Ukraine,
+    //     Iraq,
+    //     Afghanistan,
+    //     Poland,
+    //     Morocco,
+    //     Saudi_Arabia,
+    //     Uzbekistan,
+    //     Peru,
+    //     Malaysia,
+    //     Angola,
+    //     Ghana,
+    //     Nepal,
+    //     Yemen,
+    //     Madagascar,
+    //     North_Korea,
+    //     Taiwan,
+    //     Sri_Lanka,
+    //     Romania,
+    //     Kazakhstan,
+    //     Chile,
+    //     Belgium,
+    //     Ecuador,
+    //     Greece,
+    //     Sweden,
+    //     Hungary,
+    //     Austria,
+    //     Serbia,
+    //     Bulgaria,
+    //     Denmark,
+    //     Finland,
+    //     Slovakia,
+    //     Norway,
+    //     Ireland,
+    //     Croatia,
+    //     Moldova,
+    //     Bosnia_and_Herzegovina,
+    //     Albania,
+    //     North_Macedonia,
+    //     Bolivia,
+    //     Guatemala,
+    //     Honduras,
+    //     Nicaragua,
+    //     Costa_Rica,
+    //     Panama,
+    //     Belize,
+    //     Cuba,
+    //     Dominican_Republic,
+    //     Haiti,
+    //     Jamaica,
+    //     Trinidad_and_Tobago,
+    //     Barbados,
+    //     Saint_Lucia,
+    //     Grenada,
+    //     Saint_Vincent_and_the_Grenadines,
+    //     Antigua_and_Barbuda,
+    //     Dominica,
+    //     Saint_Kitts_and_Nevis,
+    //     Bahamas
+    // }
 
     // events
     event AmountStaked(uint256 indexed amount);
@@ -150,6 +151,7 @@ contract Main is ReentrancyGuard, Test { // remove test for production
     error Main__TokenNotAllowedForStaking();
     error Main__NoLiquidityStakedToReap();
     error Main__MinTimelockNotFinished(uint, uint);
+    error Main__ProtocolFeeHasMaxValue();
 
     // state variables
     struct Category {
@@ -190,22 +192,16 @@ contract Main is ReentrancyGuard, Test { // remove test for production
     UserSnapshot[] public globalUserSnapshot;
 
     // the total amount the user staked in all categories together
-    mapping(address collaborator => uint256 totalAmountStaked)
-        public totalStaked;
+    mapping(address collaborator => uint256 totalAmountStaked) public totalStaked;
 
-    mapping(address collaborator => uint256 quantity)
-        public totalAmountStakedEver; // this one is just for keeping track of the total ever staked, it is not perfect though because it can be tricked by just staking and removing at the same block. for now lets add it.
+    mapping(address collaborator => uint256 quantity) public totalAmountStakedEver; // this one is just for keeping track of the total ever staked, it is not perfect though because it can be tricked by just staking and removing at the same block. for now lets add it.
 
     // amount of staked for each category, temporary since it will be removed after unstaking.
     mapping(address => Category) public userEachCategory;
     // mapping(address => Category) public userEachCategoryTotalGenerated; // not being used yet, implement it later, only implemented at the end of the Unstake function
     mapping(address => Categories) public whichCategoryBeneficiary; // WHITELIST which category
-
-    mapping(address beneficiary => bool isAllowed)
-        public whitelistedBeneficiaries;
-
+    mapping(address beneficiary => bool isAllowed) public whitelistedBeneficiaries;
     mapping(address token => bool isAllowed) public allowedTokens;
-
     mapping(address => Categories) public userCurrentCategory;
 
     // amount of staked for each category, permanent since it will be used to display how much the contract ever yield for each Category, mostly for showing.
@@ -218,6 +214,7 @@ contract Main is ReentrancyGuard, Test { // remove test for production
 
     address public owner; // later make this private with a function to access this
     uint256 public protocolFee = 0; // lets first start to zero  // basis point = 0.05%. this is not being taken yet, implement when possible
+    uint256 public MAX_PROTOCOL_FEE = 200; // 2% max fee, not definitive. 
 
     uint256 public currentTimelock = 0;
     uint256 public constant MIN_TIMELOCK = 14 days; // min waiting time
@@ -242,31 +239,14 @@ contract Main is ReentrancyGuard, Test { // remove test for production
         // stakedToken = StakedToken(_staked_token); // staked token, 
     }
 
-
-    // add a timelock later so no fee is added without previous warning. for simplicity lets leave it like this for awhile, the fee starts at 0.
-    function setProtocolFee(uint256 _newFee) external isTimelockFinished timeWindowForChangingProtocolFee{
-        if (owner != msg.sender) revert Main__NotTheOwner(msg.sender, owner);
-        protocolFee = _newFee;
-        
-        // sets currentTimelock to zero so it works again
-        timelockFinished = false; // reseting the timelock
-        currentTimelock = 0;
-    }
-
-    // reset timelock in case the admin lost the 24 hours window after the 14 days, now he must initiate the timelock again and start from scratch.
-    // NOT TESTED YET
-    function resetTimelock() external {
-        require(msg.sender == owner, "Not the owner");
-        require(currentTimelock == 0, "Timelock already started");
-        currentTimelock = 0;
-        timelockOG = 0;
-        timelockFinished = false;
-    }
-
+    // MODIFIERS
     // this will prevent the admin from just calling `startTimelock` right away so it passes the 14 days so then whenever he really want to change the fee he would be able to immediately, this would be an attack vector. adding this piece the admin have only 1 day to change the fee after the 14 days have passed, so everything as expected.
     // this snippet gives a 1 day window for the admin change the fee after 14 days passed, after that it should not be valid anymore and `resetTimelock` should be called to start over.
     modifier timeWindowForChangingProtocolFee {
-        require(timelockFinished &&  block.timestamp - timelockOG <= 15 days, "Changing Protocol Fee windows Is closed");
+        // require(timelockFinished &&  block.timestamp - timelockOG <= 15 days, "Changing Protocol Fee windows Is closed");
+        if(!timelockFinished && block.timestamp - timelockOG > 15 days) revert Main__MinTimelockNotFinished(block.timestamp - timelockOG, 15 days);
+        if(protocolFee > MAX_PROTOCOL_FEE) revert Main__ProtocolFeeHasMaxValue();
+
         // sets currentTimelock to zero so it works again
         timelockFinished = false; // reseting the timelock
         currentTimelock = 0;
@@ -279,10 +259,37 @@ contract Main is ReentrancyGuard, Test { // remove test for production
         _;
     }
 
+
+    // protocol fee starts at 0 and can only be changed by the owner and after 14 days of warning.
+    function setProtocolFee(uint256 _newFee) external isTimelockFinished timeWindowForChangingProtocolFee{
+        if (owner != msg.sender) revert Main__NotTheOwner(msg.sender, owner);
+        protocolFee = _newFee;
+        
+        // sets currentTimelock to zero so it works again
+        timelockFinished = false; // reseting the timelock
+        currentTimelock = 0;
+    }
+
+    // reset timelock in case the admin lost the 24 hours window after the 14 days, now he must initiate the timelock again and start from scratch.
+    // NOT TESTED YET
+    function resetTimelock() external {
+        if(msg.sender != owner) revert Main__NotTheOwner(msg.sender, owner);
+        require(currentTimelock == 0, "Timelock already started");
+        // if(currentTimelock != 0) revert Main__MinTimelockNotFinished(block.timestamp - timelockOG, 15 days);
+
+        currentTimelock = 0;
+        timelockOG = 0;
+        timelockFinished = false;
+    }
+
     // WORKS BUT THERE IS PROBABLY A  BETTER AND MORE CONCIZE WAY
     function startTimelock() public {
-        require(msg.sender == owner, "Not the owner");
-        require(currentTimelock == 0, "Timelock already started");
+        // require(msg.sender == owner, "Not the owner");
+        // require(currentTimelock == 0, "Timelock already started");
+        
+        if(msg.sender != owner) revert Main__NotTheOwner(msg.sender, owner);
+        if(currentTimelock != 0) revert Main__MinTimelockNotFinished(block.timestamp - timelockOG, 15 days);
+
         currentTimelock = block.timestamp;
         timelockOG = block.timestamp;
 

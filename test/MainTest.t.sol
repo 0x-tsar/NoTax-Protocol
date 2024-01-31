@@ -72,22 +72,22 @@ contract MainTest is Test, MainScript {
         main.endTimelock();
 
         vm.warp(block.timestamp + 24 hours);
-        main.setProtocolFee(0.1 ether);
+        main.setProtocolFee(100);
     }
 
     function testTimelock() external {
         main.startTimelock();
         vm.warp(block.timestamp + 14 days);
         main.endTimelock();
-        main.setProtocolFee(0.2 ether);
+        main.setProtocolFee(100);
 
         vm.expectRevert();
-        main.setProtocolFee(0.2 ether);
+        main.setProtocolFee(100);
 
         main.startTimelock();
         vm.warp(block.timestamp + 14 days);
         main.endTimelock();
-        main.setProtocolFee(0.5 ether);
+        main.setProtocolFee(100);
     }
 
     function testDistributeRewards() external {
@@ -397,7 +397,7 @@ contract MainTest is Test, MainScript {
         vm.assume(_addr != address(this));
         vm.prank(_addr);
         vm.expectRevert();
-        main.setProtocolFee(500);
+        main.setProtocolFee(100);
     }
 
     function testUserTryToStakeTwice() external {

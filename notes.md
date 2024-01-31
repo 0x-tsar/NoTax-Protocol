@@ -10,6 +10,10 @@
 
 //@audit-info  since i don't know how to get what each user generated with his yield lets just remove his principal and give it back to him 100% but the this percentage number is IMPERATIVE for the idea of this protocol, so lets just look later
 
+<!-- parallel to the protocol -->
+
+[ ] create a Tipper/Cashback contract which is a router that accepts the percentage of the tip and the CATEGORY, this Tipper router can be inherited by every single protocol that supports the community, it can also take a location as parameter, so if the user wants to fund it.
+
 
 <!-- ------------------------------ -->
 <!-- --------------V1-------------- -->
@@ -25,13 +29,14 @@
 [ ] district / region distribution [which layer?]
 [ ] include hiring category?, [which layer?]
 [ ] change name beneficiary for officials like is stated in the docs?
+[ ] add the concept of staking/slashing if a DAO is not honest
 
 <!-- ------------------------------ -->
 <!-- --------------V2-------------- -->
 
 [ ] [maybe move it to the Base Layer?] [THIS SHOULD BE SOULBOND] create and associate nfts as badges
 [ ] add a stake with tokens too
-[ ] a governance token to add new Beneficiaries
+[ ] a governance token to add new Officials / Principals
 [ ] (decide which layer this goes to, the base or the higher ones) implement sporadic events and projects [e.g. build a new school]
 [ ] add roles instead of a single owner, also a timelock
 [ ] take a look at how to implement ZK proof of collaboration

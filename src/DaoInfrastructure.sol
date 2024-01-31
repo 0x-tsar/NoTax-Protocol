@@ -24,17 +24,23 @@ contract DaoInfrastructure is ReentrancyGuard, Test {
      uint256 currentAmount;
      uint256 goalAmount;
      address payable creator;
-     bool isApproved;
+     bool isFunded;
   }
 
   uint256 public currentProjectIndex;
+  uint256 public currentProjectPendingIndex;
   mapping (uint256 => ProjectStruct) public projectStructs;
+  mapping (address => bool) public allowedPrincipals; 
+  mapping (address => uint256) public totalFundReleasedToPrincipal; 
 
   // events
   event DAO__DelegatedTo(address indexed to, uint256 indexed amount);
   event DAO__ProjectProposed(uint256 indexed projectIndex);
+  event DAO__QuantityReceived(uint256 indexed amount);
 
   // errors
+  error ProjectDoesNotExist();
+  error DAO__NotAdmin(address sender);
 
   constructor(){
     admin = payable(msg.sender);
@@ -42,7 +48,9 @@ contract DaoInfrastructure is ReentrancyGuard, Test {
   }
 
   modifier onlyAdmin(){
-    require(msg.sender == admin, "DENIED: ONLY ADMIN");
+    if(msg.sender != admin) {
+      revert DAO__NotAdmin(msg.sender);
+    }
     _;
   }
 
@@ -50,9 +58,11 @@ contract DaoInfrastructure is ReentrancyGuard, Test {
   function delegateTo(address payable _delegated, uint256 _projectIndex) public onlyAdmin {
     ProjectStruct memory p = projectStructs[_projectIndex];
     
-    // TODO: CHECK IF PROJECT EXISTS
-    // TODO: at this time anyone can be the delegated and anyone can propose
+    if(p.creator == address(0)) {
+      revert ProjectDoesNotExist();
+    }
 
+    // TODO: at this time anyone can be the delegated and anyone can propose
     console.log("WETH BALANCE: ",weth.balanceOf(address(this)));
     console.log("ETH BALANCE:" ,address(this).balance);
     
@@ -61,8 +71,6 @@ contract DaoInfrastructure is ReentrancyGuard, Test {
     
     delete projectStructs[_projectIndex];
 
-
-    // everything working exactly was expected
     weth.transfer(_delegated, p.currentAmount);
     console.log("_delegated weth balance:",weth.balanceOf(_delegated));
 
@@ -72,29 +80,29 @@ contract DaoInfrastructure is ReentrancyGuard, Test {
     emit DAO__DelegatedTo(_delegated, p.currentAmount); // goalAmount or currentAmount
   }
 
-  // should be added isProposer or anyone can propose?
-  // @audit this is already approved for faster tests, change it later.
-  function proposeProject() public {
+  // so far anyone can propose. It can be revised this decision later
+  function proposeProject(string memory _title, string memory _shortExpanation, string memory _url, string memory _metadata, string memory _picture, uint256 _goalAmount) public returns (uint256 indexProposal) {
+
       ProjectStruct memory p = ProjectStruct ({
-        title: "New Warehouse",
-        shortExplanation: "Necessary for storing packages arriving from all over the state",
-        url: "https://more about the project,  could be a X/Youtube video",
-        metadata: "",
-        picture: "picture here",
-        currentAmount: 1 ether,
-        goalAmount: 1 ether,
+        title: _title,
+        shortExplanation: _shortExpanation , //"Necessary for storing packages arriving from all over the state",
+        url: _url, //"https://more about the project,  could be a X/Youtube video",
+        metadata: _metadata,
+        picture: _picture,
+        currentAmount: 0,
+        goalAmount: _goalAmount,
         creator: payable(msg.sender),
-        isApproved: true
+        isFunded: false
       });
 
       projectStructs[currentProjectIndex] = p; // starts at 0
+      indexProposal = currentProjectIndex; // this index is the index of the proposal returned to the caller
       currentProjectIndex++;
 
       emit DAO__ProjectProposed(currentProjectIndex);
   }
 
   receive() external payable {
-    console.log("quantity received");
-    console.log(msg.value);
+    emit DAO__QuantityReceived(msg.value);
   }
 }
