@@ -6,10 +6,10 @@ import {WETH9} from "./interfaces/IWETH.sol";
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "lib/forge-std/src/interfaces/IERC20.sol";
 
-import "forge-std/Test.sol"; // remove for production
+// import "forge-std/Test.sol"; // remove for production
 
 // this contract is going to be inherited by all the DAOs. this is a MVP.
-contract DaoBase is ReentrancyGuard, Test {
+contract DaoBase is ReentrancyGuard {
   mapping (address user => bool isAllowed) public isPrincipal;
   mapping (string country => uint amount) public country;
   address public admin;

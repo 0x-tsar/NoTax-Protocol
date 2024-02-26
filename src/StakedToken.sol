@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.20;
 
-import "forge-std/Test.sol";
+// import "forge-std/Test.sol"; red squiggly line for some reason, still works though
 import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {Main} from "./Main.sol";
 

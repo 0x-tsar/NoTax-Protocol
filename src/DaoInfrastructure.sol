@@ -6,11 +6,11 @@ import {WETH9} from "./interfaces/IWETH.sol";
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "lib/forge-std/src/interfaces/IERC20.sol";
 
-import "forge-std/Test.sol"; // remove for production
+// import "forge-std/Test.sol"; // remove for production [red squiggly line, but it works]
 
 // each benefiary/Official/Principal can be a different logic
 // this logic includes hiring people.
-contract DaoInfrastructure is ReentrancyGuard, Test {
+contract DaoInfrastructure is ReentrancyGuard{
   address payable admin;
   WETH9 public weth;
 
@@ -63,16 +63,18 @@ contract DaoInfrastructure is ReentrancyGuard, Test {
     }
 
     // TODO: at this time anyone can be the delegated and anyone can propose
-    console.log("WETH BALANCE: ",weth.balanceOf(address(this)));
-    console.log("ETH BALANCE:" ,address(this).balance);
+    // console.log("WETH BALANCE: ",weth.balanceOf(address(this)));
+    // console.log("ETH BALANCE:" ,address(this).balance);
     
     // require(address(this).balance >= p.currentAmount, "BALANCE OF THE DAO NOT ENOUGH"); // check if dao has enough funds to cover this project
     require(weth.balanceOf(address(this)) >= p.currentAmount, "BALANCE OF THE DAO NOT ENOUGH"); // check if dao has enough funds to cover this project
     
     delete projectStructs[_projectIndex];
 
-    weth.transfer(_delegated, p.currentAmount);
-    console.log("_delegated weth balance:",weth.balanceOf(_delegated));
+    bool success =  weth.transfer(_delegated, p.currentAmount);
+    require(success, "NOT POSSIBLE");
+
+    // console.log("_delegated weth balance:",weth.balanceOf(_delegated));
 
     // (bool success, ) = _delegated.call{value: p.currentAmount}("");
     // require(success, "NOT POSSIBLE");

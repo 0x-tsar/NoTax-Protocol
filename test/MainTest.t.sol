@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import {Main} from "../src/Main.sol";
@@ -348,13 +348,13 @@ contract MainTest is Test, MainScript {
             uint256 timeWithdrawed,
             uint256 valueDeposited,
             ,
-            address token,,
+            address token,,,
         ) = main.userSnapshot(user, 0);
 
         vm.warp(block.timestamp + 20 days);
         main.removeStakedEth();
 
-        (, timeDeposited, timeWithdrawed, valueDeposited, ,, ,) = main
+        (, timeDeposited, timeWithdrawed, valueDeposited,,,,,) = main
             .userSnapshot(user, 0);
 
         assertEq(main.indexUserSnapshot(user), 1);
@@ -378,13 +378,13 @@ contract MainTest is Test, MainScript {
             uint256 timeDeposited,
             uint256 timeWithdrawed,
             uint256 valueDeposited,
-            ,,,
+            ,,,,
 
         ) = main.userSnapshot(user, 0);
 
         main.removeStakedEth();
 
-        (, timeDeposited, timeWithdrawed, valueDeposited, , , , ) = main
+        (, timeDeposited, timeWithdrawed, valueDeposited, , , , ,) = main
             .userSnapshot(user, 0);
 
         assertEq(main.indexUserSnapshot(user), 1);
@@ -618,7 +618,14 @@ contract DaoTest is Test, MainScript {
 
     function testProposeProject() public {
         vm.prank(user);
-        daoInfrastructure.proposeProject();
+        daoInfrastructure.proposeProject(
+            "title",
+            "shortExpanation",
+            "url",
+            "metadata",
+            "picture",
+            1 ether
+        );
 
 
         vm.deal(makeAddr("me"), 600 ether);

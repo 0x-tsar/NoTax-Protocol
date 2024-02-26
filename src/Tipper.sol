@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.20;
+pragma solidity ^0.8.20;
 
 import {Main as NoTax} from "./Main.sol";
 
@@ -19,6 +19,7 @@ contract Tipper {
   error Tipper__ValueIsZero();
 
   constructor(address payable _noTaxAddress) {
+
     admin = msg.sender;
     noTax = NoTax(_noTaxAddress);
   }
@@ -28,7 +29,10 @@ contract Tipper {
       1. is it supposed to be more of a cashback or a tip system?
       2. no matter what if one or another, the second time the user triest to tip/stake without removing his stake from the NoTax protocol it will revert because only one at a time is allowed
       3. who is the staker, the user or the contract? because the NoTax function takes the msg.sender as the staker, so it should be modified if any protocol intends to use the user as the Staker, the default is the contract calling it to stake the users' funds
+
+      obs: protocols might want to ensure their users don't remove the staked amount right after the contract stake it, so for this router function in specific there could be a param for a minimum amount of itme the protocol wants the user to keep the funds staked.
   */
+
   function router(NoTax.Categories _category) public payable {
     if(msg.value == 0){ // maybe redundant because the stakeWithEth function will revert if the value is 0, BUT if this protocol can be used for different protocols it can be useful
       revert Tipper__ValueIsZero();

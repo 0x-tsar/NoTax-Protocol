@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.20;
+// import "forge-std/Test.sol"; // remove for production
 
 import {WETH9} from "./interfaces/IWETH.sol";
 import {IPool} from "./interfaces/IPool.sol";
@@ -11,9 +11,8 @@ import {CommunityBadges} from "./CommunityBadges.sol";
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "lib/forge-std/src/interfaces/IERC20.sol";
 
-import "forge-std/Test.sol"; // remove for production
 
-contract Main is ReentrancyGuard, Test { // remove test for production
+contract Main is ReentrancyGuard { // remove test for production
     StakedToken public stakedToken;
     CommunityBadges public communityBadges; // should this be upgradeable in order to add more badges in the future? can work as a PoH.
 
@@ -26,117 +25,6 @@ contract Main is ReentrancyGuard, Test { // remove test for production
         SOCIAL_CAUSE
     }
 
-    // still not defined if using countries is the best way around it
-    // enum Countries {
-    //     Dubai,
-    //     Switzerland,
-    //     Singapore,
-    //     Malta,
-    //     Estonia,
-    //     Gibraltar,
-    //     Lithuania,
-    //     Unite_States,
-    //     Japan,
-    //     South_Korea,
-    //     El_Salvador,
-    //     Portugal,
-    //     Bermuda,
-    //     Germany,
-    //     Slovenia,
-    //     Belarus,
-    //     Netherlands,
-    //     Australia,
-    //     Canada,
-    //     China,
-    //     Brazil,
-    //     India,
-    //     Mexico,
-    //     United_Kingdom,
-    //     France,
-    //     Italy,
-    //     Spain,
-    //     Russia,
-    //     Turkey,
-    //     Argentina,
-    //     Indonesia,
-    //     Pakistan,
-    //     Bangladesh,
-    //     Nigeria,
-    //     Ethiopia,
-    //     Philippines,
-    //     Egypt,
-    //     Vietnam,
-    //     DR_Congo,
-    //     Iran,
-    //     Thailand,
-    //     South_Africa,
-    //     Tanzania,
-    //     Myanmar,
-    //     Kenya,
-    //     Colombia,
-    //     Uganda,
-    //     Algeria,
-    //     Sudan,
-    //     Ukraine,
-    //     Iraq,
-    //     Afghanistan,
-    //     Poland,
-    //     Morocco,
-    //     Saudi_Arabia,
-    //     Uzbekistan,
-    //     Peru,
-    //     Malaysia,
-    //     Angola,
-    //     Ghana,
-    //     Nepal,
-    //     Yemen,
-    //     Madagascar,
-    //     North_Korea,
-    //     Taiwan,
-    //     Sri_Lanka,
-    //     Romania,
-    //     Kazakhstan,
-    //     Chile,
-    //     Belgium,
-    //     Ecuador,
-    //     Greece,
-    //     Sweden,
-    //     Hungary,
-    //     Austria,
-    //     Serbia,
-    //     Bulgaria,
-    //     Denmark,
-    //     Finland,
-    //     Slovakia,
-    //     Norway,
-    //     Ireland,
-    //     Croatia,
-    //     Moldova,
-    //     Bosnia_and_Herzegovina,
-    //     Albania,
-    //     North_Macedonia,
-    //     Bolivia,
-    //     Guatemala,
-    //     Honduras,
-    //     Nicaragua,
-    //     Costa_Rica,
-    //     Panama,
-    //     Belize,
-    //     Cuba,
-    //     Dominican_Republic,
-    //     Haiti,
-    //     Jamaica,
-    //     Trinidad_and_Tobago,
-    //     Barbados,
-    //     Saint_Lucia,
-    //     Grenada,
-    //     Saint_Vincent_and_the_Grenadines,
-    //     Antigua_and_Barbuda,
-    //     Dominica,
-    //     Saint_Kitts_and_Nevis,
-    //     Bahamas
-    // }
-
     // events
     event AmountStaked(uint256 indexed amount);
     event AmountUnstaked(uint256 indexed amount);
@@ -146,7 +34,7 @@ contract Main is ReentrancyGuard, Test { // remove test for production
     error Main__ZeroValue();
     error Main__NoAmountStaked();
     error Main__NotTheOwner(address sender, address owner);
-    error Main__BeneficiaryAlreadyHasCategory();
+    error Main__oficialAlreadyHasCategory();
     error Main__UserMustFirstWithdrawToStakeAgain();
     error Main__TokenNotAllowedForStaking();
     error Main__NoLiquidityStakedToReap();
@@ -172,6 +60,7 @@ contract Main is ReentrancyGuard, Test { // remove test for production
         address token;
         address sender;
         bool isRetrievable;
+        Categories category;
         // @audit-info IMPORTANT! TODO: 
         // string country/region?  this can then be passed to the sub dao so the correct amount is distributed to not only the area chosen by the user but also the region he wants to improve [his local community, for example]
         // maybe create a timesSnapshot counter to beter distribute the counter. something for later.
@@ -199,10 +88,12 @@ contract Main is ReentrancyGuard, Test { // remove test for production
     // amount of staked for each category, temporary since it will be removed after unstaking.
     mapping(address => Category) public userEachCategory;
     // mapping(address => Category) public userEachCategoryTotalGenerated; // not being used yet, implement it later, only implemented at the end of the Unstake function
-    mapping(address => Categories) public whichCategoryBeneficiary; // WHITELIST which category
-    mapping(address beneficiary => bool isAllowed) public whitelistedBeneficiaries;
+    mapping(address => Categories) public whichCategoryOficial; // WHITELIST which category | WHICH category is the oficial DAO for this address
+    mapping(address oficial => bool isAllowed) public whitelistedOficials; //      | IF the address is allowed to receive the funds 
     mapping(address token => bool isAllowed) public allowedTokens;
-    mapping(address => Categories) public userCurrentCategory;
+    mapping(address user => Categories) public userCurrentCategory; // this is the current category the user is staking, it can only be one at a time, for now.
+    mapping (address user => uint256 points) public userPoints;
+
 
     // amount of staked for each category, permanent since it will be used to display how much the contract ever yield for each Category, mostly for showing.
     // mapping(address => Category) public totalEverEachCategory;
@@ -234,12 +125,13 @@ contract Main is ReentrancyGuard, Test { // remove test for production
         owner = msg.sender; // later this should be a multisig/dao or atleast add timelock for decentralization, for now let's stick with this
 
         setTokenAllowed(address(weth), true); //allowing weth [MAINNET]
-        setTokenAllowed(0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c, true); //allowing usdc [MAINNET]  this is Aave Ethereum USDC (aEthUSDC), should it be this or the OG usdc?
+        // setTokenAllowed(0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c, true); //allowing usdc [MAINNET]  this is Aave Ethereum USDC (aEthUSDC), should it be this or the OG usdc?
 
         // stakedToken = StakedToken(_staked_token); // staked token, 
     }
 
-    // MODIFIERS
+    ///////////////////////////////////////////////////////////////////////////
+    //////////////////////////// MODIFIERS ////////////////////////////////////
     // this will prevent the admin from just calling `startTimelock` right away so it passes the 14 days so then whenever he really want to change the fee he would be able to immediately, this would be an attack vector. adding this piece the admin have only 1 day to change the fee after the 14 days have passed, so everything as expected.
     // this snippet gives a 1 day window for the admin change the fee after 14 days passed, after that it should not be valid anymore and `resetTimelock` should be called to start over.
     modifier timeWindowForChangingProtocolFee {
@@ -255,7 +147,8 @@ contract Main is ReentrancyGuard, Test { // remove test for production
     }
    
     modifier isTimelockFinished() {
-        require(timelockFinished, "Timelock is not over");
+        // require(timelockFinished, "Timelock is not over");
+        if(!timelockFinished) revert Main__MinTimelockNotFinished(block.timestamp - timelockOG, 15 days);
         _;
     }
 
@@ -309,17 +202,18 @@ contract Main is ReentrancyGuard, Test { // remove test for production
     // setting an address as benefitiary or not.
     // an address if set to true for one category it cant be set for another later, this is intented. it can only be allowed or not allowed.
     // beneficiary will be DAOs which can develop their own logic on how do distribute and delegate the capital, this base layer only forwards the money, maybe in V2 add more options of DAOs for each category.
+    // TODO: add more than one DAO for each category, for now it's only one.
     function manageBeneficiaryWhitelist(
-        address _beneficiary,
+        address _oficial,
         Categories _category,
         bool isAllowed
     ) external {
         if (owner != msg.sender) revert Main__NotTheOwner(msg.sender, owner);
-        Categories beneficiaryCategory = whichCategoryBeneficiary[_beneficiary]; // defaults to 0 = UNDEFINED
+        Categories beneficiaryCategory = whichCategoryOficial[_oficial]; // defaults to 0 = UNDEFINED
 
         // checks if the first this beneficiary is defined
         if (beneficiaryCategory == Categories.UNDEFINED) {
-            whichCategoryBeneficiary[_beneficiary] = _category;
+            whichCategoryOficial[_oficial] = _category;
         }
 
         // checks if is trying to change its category or just allowing and disallowing, revert if changes categories. [working as expected after tests]
@@ -327,21 +221,21 @@ contract Main is ReentrancyGuard, Test { // remove test for production
             beneficiaryCategory != _category &&
             beneficiaryCategory != Categories.UNDEFINED
         ) {
-            revert Main__BeneficiaryAlreadyHasCategory();
+            revert Main__oficialAlreadyHasCategory();
         }
 
-        whitelistedBeneficiaries[_beneficiary] = isAllowed;
+        whitelistedOficials[_oficial] = isAllowed;
 
         if (_category == Categories.INFRASTRUCTURE) {
-            INFRASTRUCTURE_DAO = _beneficiary;
+            INFRASTRUCTURE_DAO = _oficial;
         }else if(_category == Categories.HEALTH){
-            HEALTH_DAO = _beneficiary;
+            HEALTH_DAO = _oficial;
         }else if(_category == Categories.ENVIRONMENT){
-            ENVIRONMENT_DAO = _beneficiary;
+            ENVIRONMENT_DAO = _oficial;
         }else if(_category == Categories.ANIMAL_CAUSE){
-            ANIMAL_CAUSE_DAO = _beneficiary;
+            ANIMAL_CAUSE_DAO = _oficial;
         }else if(_category == Categories.SOCIAL_CAUSE){
-            SOCIAL_CAUSE_DAO = _beneficiary;
+            SOCIAL_CAUSE_DAO = _oficial;
         }
 
     }
@@ -371,9 +265,9 @@ contract Main is ReentrancyGuard, Test { // remove test for production
             categoryWeights[uint(category)] += weight;
         }
 
-            console.log("tests: ");
-            console.log(fullLiquidityStaked);
-            console.log(valueToLeaveThere);
+            // console.log("tests: ");
+            // console.log(fullLiquidityStaked);
+            // console.log(valueToLeaveThere);
 
             uint totalAmount = aavePool.withdraw(address(weth), fullLiquidityStaked - valueToLeaveThere , address(this)); 
 
@@ -384,11 +278,22 @@ contract Main is ReentrancyGuard, Test { // remove test for production
 
             // @audit-ok I understand if one of these revert all the others will too, not a problem atm, fix it when in production.
             // Distribute category share to users
-            weth.transfer(INFRASTRUCTURE_DAO, categoryShares[uint(Categories.INFRASTRUCTURE)]);
-            weth.transfer(HEALTH_DAO, categoryShares[uint(Categories.HEALTH)]);
-            weth.transfer(ENVIRONMENT_DAO, categoryShares[uint(Categories.ENVIRONMENT)]);
-            weth.transfer(ANIMAL_CAUSE_DAO, categoryShares[uint(Categories.ANIMAL_CAUSE)]);
-            weth.transfer(SOCIAL_CAUSE_DAO, categoryShares[uint(Categories.SOCIAL_CAUSE)]);
+            bool success1 = weth.transfer(INFRASTRUCTURE_DAO, categoryShares[uint(Categories.INFRASTRUCTURE)]);
+            require(success1, "Transfer failed");
+            bool success2 = weth.transfer(HEALTH_DAO, categoryShares[uint(Categories.HEALTH)]);
+            require(success2, "Transfer failed");
+            bool success3 = weth.transfer(ENVIRONMENT_DAO, categoryShares[uint(Categories.ENVIRONMENT)]);
+            require(success3, "Transfer failed");
+            bool success4 = weth.transfer(ANIMAL_CAUSE_DAO, categoryShares[uint(Categories.ANIMAL_CAUSE)]);
+            require(success4, "Transfer failed");
+            bool success5 = weth.transfer(SOCIAL_CAUSE_DAO, categoryShares[uint(Categories.SOCIAL_CAUSE)]);
+            require(success5, "Transfer failed");
+
+            
+            // weth.transfer(HEALTH_DAO, categoryShares[uint(Categories.HEALTH)]);
+            // weth.transfer(ENVIRONMENT_DAO, categoryShares[uint(Categories.ENVIRONMENT)]);
+            // weth.transfer(ANIMAL_CAUSE_DAO, categoryShares[uint(Categories.ANIMAL_CAUSE)]);
+            // weth.transfer(SOCIAL_CAUSE_DAO, categoryShares[uint(Categories.SOCIAL_CAUSE)]);
 
             delete globalUserSnapshot;
     }
@@ -408,9 +313,9 @@ contract Main is ReentrancyGuard, Test { // remove test for production
         allowedTokens[_token] = _isAllowed;
     }
 
-    // TODO: add a third variable here stating the region/district/country of the staker so its perncetage will go to the correct place further in the subsequent DAO and distributed to the correct people which will be responsable for handling this.
+    // TODO: add a third variable here stating the region/district/country of the staker so its perncetage will go to the correct place further in the subsequent DAO and distributed to the correct people which will be responsable for handling this
     function stakeWithEth(
-        Categories category,
+        Categories _category,
         address _tokenToStakeAddress
     ) public payable nonReentrant {
         if (msg.value <= 0) revert Main__ZeroValue();
@@ -425,17 +330,17 @@ contract Main is ReentrancyGuard, Test { // remove test for production
 
         totalStaked[msg.sender] += msg.value;
 
-        userCurrentCategory[msg.sender] = category; // @audit this is being wiped out before the time, change this to an array instead when going more complex, for now I believe this is fine.
+        userCurrentCategory[msg.sender] = _category; // @audit this is being wiped out before the time, change this to an array instead when going more complex, for now I believe this is fine.
 
-        if (category == Categories.INFRASTRUCTURE) {
+        if (_category == Categories.INFRASTRUCTURE) {
             userEachCategory[msg.sender].infrastructure += msg.value;
-        } else if (category == Categories.HEALTH) {
+        } else if (_category == Categories.HEALTH) {
             userEachCategory[msg.sender].health += msg.value;
-        } else if (category == Categories.ENVIRONMENT) {
+        } else if (_category == Categories.ENVIRONMENT) {
             userEachCategory[msg.sender].environment += msg.value;
-        } else if (category == Categories.ANIMAL_CAUSE) {
+        } else if (_category == Categories.ANIMAL_CAUSE) {
             userEachCategory[msg.sender].animalCause += msg.value;
-        } else if (category == Categories.SOCIAL_CAUSE) {
+        } else if (_category == Categories.SOCIAL_CAUSE) {
             userEachCategory[msg.sender].socialCause += msg.value;
         }
 
@@ -451,7 +356,8 @@ contract Main is ReentrancyGuard, Test { // remove test for production
             median: 0,
             token: address(weth),
             sender: msg.sender,
-            isRetrievable: false
+            isRetrievable: false,
+            category: _category
         });
 
         _userSnapshot.push(tempStruct);
@@ -516,7 +422,8 @@ contract Main is ReentrancyGuard, Test { // remove test for production
             median: 0, // measure it later or exclude this since right now is not being used
             token: _userSnapshot[_indexUserSnapshot].token,
             sender: msg.sender,
-            isRetrievable: true
+            isRetrievable: true,
+            category: _userSnapshot[_indexUserSnapshot].category
         });
 
         // CALCULATING POINTS ===============
@@ -539,8 +446,6 @@ contract Main is ReentrancyGuard, Test { // remove test for production
         indexUserSnapshot[msg.sender] += 1; // updates user index
         // ========================================
 
-        // uint lpAaveTokenYielded = aaveTokenLP.balanceOf(msg.sender); // do the calculation of how much the user earned to the protocol
-
         /// first unstake from aaveProtocol
         uint256 stakeEtherWithoutYield = _unstakeWeth(sumOfStaked); // type(uint256).max to remove all the from the protocol, maybe can the last user do that?
         // uint256 beneficiaryTokens = allYieldGenerated - sumOfStaked; // All staked - total with yield
@@ -548,19 +453,17 @@ contract Main is ReentrancyGuard, Test { // remove test for production
         totalAmountStakedEver[msg.sender] += stakeEtherWithoutYield; // an aggregated of all the above. also does not interact with the logic of this function.
 
         weth.withdraw(stakeEtherWithoutYield); // this converts back all the generated yield to the contract and converts it back to ETH
-        // payable(_beneficiary).transfer(stakeEtherWithoutYield); // gives just the yield amount to the beneficiary
+        // payable(_oficial).transfer(stakeEtherWithoutYield); // gives just the yield amount to the beneficiary
         payable(msg.sender).transfer(sumOfStaked); // gives 100% of the invested tokens to the staker, without any fees, just the amount staked
     }
 
     // function removeStakedToken() external nonReentrant {}
     
-    mapping (address user => uint256 points) public userPoints;
-
     function calculatePoints(uint256 _calculatedPoints) private {
         // uint256 calcualtedPoints = (_userSnapshot[_indexUserSnapshot].timeWithdraw - _userSnapshot[_indexUserSnapshot].timeDeposit ) * _userSnapshot[_indexUserSnapshot].valueDeposited; 
         // calculatePoints(calcualtedPoints); 
         userPoints[msg.sender] += (_calculatedPoints / POINTS_DENOMINATOR);
-        console.log("calculatePoints: ", userPoints[msg.sender]);
+        // console.log("calculatePoints: ", userPoints[msg.sender]);
     }
     receive() external payable {
         emit ReceiveFunctionCalled(msg.sender, msg.value);
@@ -584,17 +487,16 @@ contract Main is ReentrancyGuard, Test { // remove test for production
 
     function _stakeToAavePool(address _token, uint256 _value) internal {
         if (_token == address(weth)) {
-            // 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2 POOL ADDRESS
-            // aavePool supply and deposit are praticaly the same thing.
+            // aavePool `supply` and `deposit` methods are praticaly the same thing.
             aavePool.supply(address(weth), _value, address(this), 0); // [the onbehalfof here means the address that will receive the LPTokens] asset, amount, onBehalfOf, referralCode .  refferalcode means using a middle man
         } else {
-            // supplying token [whiste-listeds only]
             // check if _token address is whitelisted, for now this condition will not be called since in v1 only weth will be used
             aavePool.supply(_token, _value, address(this), 0);
         }
     }
 
     // function to get the data about the users collateral
+    // is this function really useful? maybe it should be removed
     function _getUserAccountData(
         address _user
     )
