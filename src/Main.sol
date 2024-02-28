@@ -314,6 +314,7 @@ contract Main is ReentrancyGuard { // remove test for production
     }
     // 
 
+    //
     // TODO: add a third variable here stating the region/district/country of the staker so its perncetage will go to the correct place further in the subsequent DAO and distributed to the correct people which will be responsable for handling this
     function stakeWithEth(
         Categories _category,
